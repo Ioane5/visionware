@@ -3,7 +3,6 @@ package ge.ioane.visionware;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.PowerManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.TextView;
@@ -17,6 +16,7 @@ import com.google.atap.tangoservice.TangoOutOfDateException;
 import com.google.atap.tangoservice.TangoPoseData;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private double mTimeToNextUpdate = UPDATE_INTERVAL_MS;
 
     private TextView mLocalizationTextView;
+    private TextView mStatusTextView;
     private final Object mSharedLock = new Object();
 
     public static void start(Context context, String adfUUID) {
@@ -50,7 +51,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mLocalizationTextView = (TextView) findViewById(R.id.localization_text_view);
+        mStatusTextView = (TextView) findViewById(R.id.tv_status);
+        mLocalizationTextView = (TextView) findViewById(R.id.tv_localization);
     }
 
     @Override
@@ -61,7 +63,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 synchronized (MainActivity.this) {
-                    onLocalizationStateChanged(false);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            onLocalizationStateChanged(false);
+                        }
+                    });
                     try {
                         mConfig = setTangoConfig(mTango, false, true);
                         mTango.connect(mConfig);
@@ -136,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
 
         mTango.connectListener(framePairs, new Tango.TangoUpdateCallback() {
             @Override
-            public void onPoseAvailable(TangoPoseData pose) {
+            public void onPoseAvailable(final TangoPoseData pose) {
                 super.onPoseAvailable(pose);
 
                 // Make sure to have atomic access to Tango Data so that UI loop doesn't interfere
@@ -153,7 +160,21 @@ public class MainActivity extends AppCompatActivity {
                         } else {
                             mIsRelocalized = false;
                         }
+                    } else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
+                        if (pose.statusCode == TangoPoseData.POSE_VALID) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Log.d(TAG, "onPoseAvailable: Translation " + Arrays.toString(pose.translation));
+                                    Log.d(TAG, "onPoseAvailable: Rotation " + Arrays.toString(pose.rotation));
+                                    
+                                    updateStatus(Arrays.toString(pose.translation));
+                                }
+                            });
+                        }
                     }
+
                 }
 
                 final double deltaTime = (pose.timestamp - mPreviousPoseTimeStamp) *
@@ -188,5 +209,10 @@ public class MainActivity extends AppCompatActivity {
             mLocalizationTextView.setText("Not Localized");
             Log.d(TAG, "Not Localized");
         }
+    }
+
+
+    private void updateStatus(String status) {
+        mStatusTextView.setText(status);
     }
 }
