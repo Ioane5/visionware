@@ -1,4 +1,4 @@
-package ge.ioane.visionware;
+package ge.ioane.visionware.activities;
 
 import android.content.Context;
 import android.content.Intent;
@@ -28,8 +28,10 @@ import clarifai2.dto.input.ClarifaiInput;
 import clarifai2.dto.input.image.ClarifaiFileImage;
 import clarifai2.dto.model.output.ClarifaiOutput;
 import clarifai2.dto.prediction.Concept;
-import ge.ioane.visionware.camera.ReadableTangoCameraPreview;
-import ge.ioane.visionware.camera.TangoCameraScreengrabCallback;
+import ge.ioane.visionware.R;
+import ge.ioane.visionware.RelativeCaltulator;
+import ge.ioane.visionware.capture.ReadableTangoCameraPreview;
+import ge.ioane.visionware.capture.TangoCameraScreengrabCallback;
 import okhttp3.OkHttpClient;
 
 public class MainActivity extends AppCompatActivity implements TangoCameraScreengrabCallback {

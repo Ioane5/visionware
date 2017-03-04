@@ -1,11 +1,11 @@
-package ge.ioane.visionware.camera;
+package ge.ioane.visionware.capture;
 
 import android.opengl.GLSurfaceView;
 import android.util.Log;
 
 import com.google.atap.tangoservice.TangoCameraPreview;
 
-import ge.ioane.visionware.MainActivity;
+import ge.ioane.visionware.activities.MainActivity;
 
 /**
  * Created by ioane5 on 3/4/17.

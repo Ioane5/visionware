@@ -1,4 +1,4 @@
-package ge.ioane.visionware.camera;
+package ge.ioane.visionware.capture;
 
 /**
  * Created by ioane5 on 3/4/17.

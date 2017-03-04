@@ -1,4 +1,4 @@
-package ge.ioane.visionware;
+package ge.ioane.visionware.model;
 
 /**
  * Created by ioane5 on 3/4/17.

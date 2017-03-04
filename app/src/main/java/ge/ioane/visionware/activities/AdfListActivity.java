@@ -1,4 +1,4 @@
-package ge.ioane.visionware;
+package ge.ioane.visionware.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -7,6 +7,8 @@ import android.support.v7.app.AppCompatActivity;
 import com.google.atap.tangoservice.Tango;
 
 import java.util.ArrayList;
+
+import ge.ioane.visionware.R;
 
 public class AdfListActivity extends AppCompatActivity {
 
