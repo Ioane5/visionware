@@ -1,5 +1,7 @@
 package ge.ioane.visionware;
 
+import com.google.atap.tangoservice.TangoPoseData;
+
 import org.rajawali3d.math.Quaternion;
 import org.rajawali3d.math.vector.Vector2;
 import org.rajawali3d.math.vector.Vector3;
@@ -51,4 +53,12 @@ public abstract class RelativeCaltulator {
         v1.distanceTo(v2);
         return v1.distanceTo(v2);
     }
+
+//    public static double[] calculatePoseForDepth(TangoPoseData pose) {
+//        Quaternion q = new Quaternion(pose.rotation[3], pose.rotation[0], pose.rotation[1], pose.rotation[2]);
+//        Vector3 v = new Vector3(pose.translation);
+//
+//        Vector3 ans = v.subtract(Vector3.ONE.transform(q));
+//        return  ans.toArray();
+//    }
 }

@@ -41,4 +41,16 @@
         android:text="EMPTY"
         android:textColor="@android:color/white" />
 
+    <ImageButton
+        android:onClick="onActivateListener"
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_margin="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="16dp"
+        android:src="@android:drawable/ic_btn_speak_now"
+        android:text="Speak" />
+
 </RelativeLayout>

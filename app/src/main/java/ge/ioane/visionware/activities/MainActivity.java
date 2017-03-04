@@ -3,8 +3,10 @@ package ge.ioane.visionware.activities;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -19,6 +21,7 @@ import com.google.atap.tangoservice.TangoPoseData;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 import clarifai2.api.ClarifaiBuilder;
 import clarifai2.api.ClarifaiClient;
@@ -29,12 +32,14 @@ import clarifai2.dto.prediction.Concept;
 import ge.ioane.visionware.App;
 import ge.ioane.visionware.R;
 import ge.ioane.visionware.RelativeCaltulator;
+import ge.ioane.visionware.VoiceCommandDetector;
 import ge.ioane.visionware.capture.ReadableTangoCameraPreview;
 import ge.ioane.visionware.capture.TangoCameraScreengrabCallback;
 import ge.ioane.visionware.model.Item;
+import ge.ioane.visionware.model.ItemDao;
 import okhttp3.OkHttpClient;
 
-public class MainActivity extends AppCompatActivity implements TangoCameraScreengrabCallback {
+public class MainActivity extends AppCompatActivity implements TangoCameraScreengrabCallback, VoiceCommandDetector.CommandCallbacks {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
@@ -43,6 +48,8 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     private static final double UPDATE_INTERVAL_MS = 100.0;
     public static final int IMAGE_CAPTURE_INTERVAL = 5000;
 
+    private TextToSpeech mTextToSpeech;
+    private TangoPoseData mSnapshotPose = null;
     private ClarifaiClient mClarifai;
     private Tango mTango;
     private TangoConfig mConfig;
@@ -77,6 +84,13 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
 
         mStatusTextView = (TextView) findViewById(R.id.tv_status);
         mLocalizationTextView = (TextView) findViewById(R.id.tv_localization);
+
+        mTextToSpeech = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                Log.d(TAG, "onInit() called with: status = [" + status + "]");
+            }
+        });
     }
 
     private void setUpClarifai() {
@@ -95,9 +109,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
             synchronized (MainActivity.this) {
                 mTangoCameraPreview.connectToTangoCamera(mTango, TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
 
-                runOnUiThread(() -> {
-                    onLocalizationStateChanged(false);
-                });
+                runOnUiThread(() -> onLocalizationStateChanged(false));
                 try {
                     mConfig = setTangoConfig(mTango, false, true);
                     mTango.connect(mConfig);
@@ -181,7 +193,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                     mTangoCameraPreview.onFrameAvailable();
 
                     long currentTime = System.currentTimeMillis();
-                    if (currentTime - mPreviousImageCapture > IMAGE_CAPTURE_INTERVAL) {
+                    if (currentTime - mPreviousImageCapture > IMAGE_CAPTURE_INTERVAL && mIsRelocalized) {
                         mPreviousImageCapture = currentTime;
                         mTangoCameraPreview.takeSnapShot();
                     }
@@ -212,6 +224,9 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
 
                             runOnUiThread(() -> {
 //                                    updateStatus(Arrays.toString(pose.translation));
+                                if (mSnapshotPose == null) {
+                                    mSnapshotPose = pose;
+                                }
                                 updateStatus(RelativeCaltulator.lookAt(pose.rotation, pose.translation, new double[]{-1, 3}));
                             });
                         }
@@ -266,7 +281,10 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
         if (mClarifai == null) {
             setUpClarifai();
         }
-        // TODO get position here
+        TangoPoseData pose = mSnapshotPose;
+        mSnapshotPose = null;
+
+        double[] position = pose.translation;
         Log.d(TAG, "newPhoto() called with: path = [" + path + "]");
         mClarifai.getDefaultModels()
                 .generalModel()
@@ -277,6 +295,9 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                         Log.d(TAG, "onClarifaiResponseSuccess: clarifaiOutputs");
                         for (Concept concept : clarifaiOutput.data()) {
                             Log.d(TAG, "onClarifaiResponseSuccess: " + concept.name() + " " + concept.value());
+                            if (concept.value() > 0.93f) {
+                                createItem(concept.name(), position);
+                            }
                         }
                     }
                 });
@@ -285,5 +306,58 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     private void createItem(String name, double[] position) {
         Item newItem = new Item(name, position[0], position[1]);
         new Thread(() -> App.getsInstance().getDaoSession().getItemDao().insert(newItem)).start();
+    }
+
+    @Override
+    public void findItemWithNameCommand(String itemName) {
+        new Thread(() -> {
+            List<Item> items = App.getsInstance()
+                    .getDaoSession()
+                    .getItemDao()
+                    .queryBuilder()
+                    .where(ItemDao.Properties.Name.eq(itemName))
+                    .build()
+                    .list();
+
+            List<Item> selectedItems = new ArrayList<>();
+            for (Item item : items) {
+                boolean isNear = false;
+                for (Item selectedItem : selectedItems) {
+                    double dist = RelativeCaltulator.distance(selectedItem.getPosition(), selectedItem.getPosition());
+                    if (dist < 0.5) {
+                        isNear = true;
+                        break;
+                    }
+                }
+                if (!isNear) {
+                    selectedItems.add(item);
+                }
+            }
+            runOnUiThread(() -> onItemsFound(selectedItems, itemName));
+        }).start();
+    }
+
+    @Override
+    public void onNoCommand() {
+
+    }
+
+    public void onItemsFound(List<Item> items, String name) {
+        Log.d(TAG, "onItemsFound() called with: items = [" + items + "], name = [" + name + "]");
+        if (items.size() == 0) {
+            speak("We couldn't find any " + name);
+        } else {
+            speak(String.format("I found %d %s%s", items.size(), name, items.size() > 0 ? "s" : ""));
+        }
+    }
+
+
+    private void speak(String text) {
+        mTextToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+    }
+
+    public void onActivateListener(View view) {
+        Log.d(TAG, "onActivateListener() called with: view = [" + view + "]");
+        findItemWithNameCommand("laptop");
     }
 }

@@ -64,4 +64,8 @@ public class Item {
     public void setZposition(double Zposition) {
         this.Zposition = Zposition;
     }
+
+    public double[] getPosition() {
+        return new double[]{Xposition, Yposition, Zposition};
+    }
 }
