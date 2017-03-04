@@ -1,8 +1,12 @@
 package ge.ioane.visionware.model;
 
+import org.greenrobot.greendao.annotation.Entity;
+import org.greenrobot.greendao.annotation.Generated;
+
 /**
  * Created by ioane5 on 3/4/17.
  */
+@Entity
 public class Item {
 
     private String name;
@@ -15,6 +19,18 @@ public class Item {
         Xposition = xposition;
         Yposition = yposition;
         Zposition = 0; // not used
+    }
+
+    @Generated(hash = 2135078682)
+    public Item(String name, double Xposition, double Yposition, double Zposition) {
+        this.name = name;
+        this.Xposition = Xposition;
+        this.Yposition = Yposition;
+        this.Zposition = Zposition;
+    }
+
+    @Generated(hash = 1470900980)
+    public Item() {
     }
 
     public String getName() {
@@ -31,5 +47,21 @@ public class Item {
 
     public double getZposition() {
         return Zposition;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setXposition(double Xposition) {
+        this.Xposition = Xposition;
+    }
+
+    public void setYposition(double Yposition) {
+        this.Yposition = Yposition;
+    }
+
+    public void setZposition(double Zposition) {
+        this.Zposition = Zposition;
     }
 }

@@ -28,10 +28,12 @@ import clarifai2.dto.input.ClarifaiInput;
 import clarifai2.dto.input.image.ClarifaiFileImage;
 import clarifai2.dto.model.output.ClarifaiOutput;
 import clarifai2.dto.prediction.Concept;
+import ge.ioane.visionware.App;
 import ge.ioane.visionware.R;
 import ge.ioane.visionware.RelativeCaltulator;
 import ge.ioane.visionware.capture.ReadableTangoCameraPreview;
 import ge.ioane.visionware.capture.TangoCameraScreengrabCallback;
+import ge.ioane.visionware.model.Item;
 import okhttp3.OkHttpClient;
 
 public class MainActivity extends AppCompatActivity implements TangoCameraScreengrabCallback {
@@ -278,6 +280,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
         if (mClarifai == null) {
             setUpClarifai();
         }
+        // TODO get position here
         Log.d(TAG, "newPhoto() called with: path = [" + path + "]");
         mClarifai.getDefaultModels()
                 .generalModel()
@@ -294,5 +297,10 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                         }
                     }
                 });
+    }
+
+    private void createItem(String name, double[] position) {
+        Item newItem = new Item(name, position[0], position[1]);
+        new Thread(() -> App.getsInstance().getDaoSession().getItemDao().insert(newItem)).start();
     }
 }
