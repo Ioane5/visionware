@@ -14,6 +14,7 @@ public class AdfListActivity extends AppCompatActivity {
 
     // Permission request action.
     public static final int REQUEST_CODE_TANGO_PERMISSION = 0;
+    public static final int REQUEST_CODE_TANGO_PERMISSION_MOTION = 1;
     private Tango mTango;
 
     @Override
@@ -21,8 +22,10 @@ public class AdfListActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_adf_list);
 
-        if (!Tango.hasPermission(this, Tango.PERMISSIONTYPE_ADF_LOAD_SAVE)) {
+        if (!hasAdfPermission()) {
             startActivityForResult(Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_ADF_LOAD_SAVE), REQUEST_CODE_TANGO_PERMISSION);
+        } else if (!hasMotionTrackingPermission()) {
+            startActivityForResult(Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_MOTION_TRACKING), REQUEST_CODE_TANGO_PERMISSION_MOTION);
         }
     }
 
@@ -30,7 +33,7 @@ public class AdfListActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        if (hasAdfPermission()) {
+        if (hasAdfPermission() && hasMotionTrackingPermission()) {
             mTango = new Tango(this, new Runnable() {
                 @Override
                 public void run() {
@@ -61,6 +64,10 @@ public class AdfListActivity extends AppCompatActivity {
 
     private boolean hasAdfPermission() {
         return Tango.hasPermission(this, Tango.PERMISSIONTYPE_ADF_LOAD_SAVE);
+    }
+
+    private boolean hasMotionTrackingPermission() {
+        return Tango.hasPermission(this, Tango.PERMISSIONTYPE_MOTION_TRACKING);
     }
 
     @Override

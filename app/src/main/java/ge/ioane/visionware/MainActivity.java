@@ -5,9 +5,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import com.google.atap.tangoservice.Tango;
+import com.google.atap.tangoservice.TangoCameraIntrinsics;
 import com.google.atap.tangoservice.TangoConfig;
 import com.google.atap.tangoservice.TangoCoordinateFramePair;
 import com.google.atap.tangoservice.TangoErrorException;
@@ -17,6 +19,8 @@ import com.google.atap.tangoservice.TangoPoseData;
 
 import java.util.ArrayList;
 
+import ge.ioane.visionware.camera.ReadableTangoCameraPreview;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -24,11 +28,14 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_ADF_UUID = "ADF_UUID";
 
     private static final double UPDATE_INTERVAL_MS = 100.0;
+    public static final int IMAGE_CAPTURE_INTERVAL = 5000; // TODO edit
 
     private Tango mTango;
     private TangoConfig mConfig;
     private boolean mIsRelocalized;
     private boolean mPreviousLocalizationState = false;
+    private ReadableTangoCameraPreview mTangoCameraPreview;
+    private long mPreviousImageCapture = 0;
 
     private double mPreviousPoseTimeStamp;
     private double mTimeToNextUpdate = UPDATE_INTERVAL_MS;
@@ -50,6 +57,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        FrameLayout container = (FrameLayout) findViewById(R.id.container);
+        mTangoCameraPreview = new ReadableTangoCameraPreview(this);
+        container.addView(mTangoCameraPreview);
+
         mStatusTextView = (TextView) findViewById(R.id.tv_status);
         mLocalizationTextView = (TextView) findViewById(R.id.tv_localization);
     }
@@ -62,6 +73,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 synchronized (MainActivity.this) {
+                    mTangoCameraPreview.connectToTangoCamera(mTango, TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
+
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -98,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
         synchronized (this) {
             try {
                 mTango.disconnect();
+                mTangoCameraPreview.disconnectFromTangoCamera();
             } catch (TangoErrorException e) {
                 Log.e(TAG, "Tango Error", e);
             }
@@ -141,6 +155,23 @@ public class MainActivity extends AppCompatActivity {
                 TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE));
 
         mTango.connectListener(framePairs, new Tango.TangoUpdateCallback() {
+
+            @Override
+            public void onFrameAvailable(int cameraId) {
+                super.onFrameAvailable(cameraId);
+
+                if (cameraId == TangoCameraIntrinsics.TANGO_CAMERA_COLOR) {
+                    mTangoCameraPreview.onFrameAvailable();
+
+                    long currentTime = System.currentTimeMillis();
+                    if (currentTime - mPreviousImageCapture > IMAGE_CAPTURE_INTERVAL) {
+                        mPreviousImageCapture = currentTime;
+                        // TODO
+                        mTangoCameraPreview.takeSnapShot();
+                    }
+                }
+            }
+
             @Override
             public void onPoseAvailable(final TangoPoseData pose) {
                 super.onPoseAvailable(pose);
@@ -162,6 +193,7 @@ public class MainActivity extends AppCompatActivity {
                     } else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
                         if (pose.statusCode == TangoPoseData.POSE_VALID) {
+
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
