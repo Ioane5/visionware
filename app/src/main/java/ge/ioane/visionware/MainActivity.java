@@ -17,19 +17,31 @@ import com.google.atap.tangoservice.TangoInvalidException;
 import com.google.atap.tangoservice.TangoOutOfDateException;
 import com.google.atap.tangoservice.TangoPoseData;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
+import clarifai2.api.ClarifaiBuilder;
+import clarifai2.api.ClarifaiClient;
+import clarifai2.api.request.ClarifaiRequest;
+import clarifai2.dto.input.ClarifaiInput;
+import clarifai2.dto.input.image.ClarifaiFileImage;
+import clarifai2.dto.model.output.ClarifaiOutput;
+import clarifai2.dto.prediction.Concept;
 import ge.ioane.visionware.camera.ReadableTangoCameraPreview;
+import ge.ioane.visionware.camera.TangoCameraScreengrabCallback;
+import okhttp3.OkHttpClient;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements TangoCameraScreengrabCallback {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private static final String KEY_ADF_UUID = "ADF_UUID";
 
     private static final double UPDATE_INTERVAL_MS = 100.0;
-    public static final int IMAGE_CAPTURE_INTERVAL = 5000; // TODO edit
+    public static final int IMAGE_CAPTURE_INTERVAL = 5000;
 
+    private ClarifaiClient mClarifai;
     private Tango mTango;
     private TangoConfig mConfig;
     private boolean mIsRelocalized;
@@ -63,6 +75,14 @@ public class MainActivity extends AppCompatActivity {
 
         mStatusTextView = (TextView) findViewById(R.id.tv_status);
         mLocalizationTextView = (TextView) findViewById(R.id.tv_localization);
+    }
+
+    private void setUpClarifai() {
+        Log.d(TAG, "setUpClarifai: start");
+        mClarifai = new ClarifaiBuilder("OVbR0VBLKK-lJambAJWUmiFgPkR5JuvYcCy3n9LJ", "i3aH24nnOE_HI79hR5r6VVRYO_hNVHZITGOITzI_")
+                .client(new OkHttpClient()) // OPTIONAL. Allows customization of OkHttp by the user
+                .buildSync();
+        Log.d(TAG, "setUpClarifai: end");
     }
 
     @Override
@@ -248,5 +268,29 @@ public class MainActivity extends AppCompatActivity {
             mCount = 0;
             mStatusTextView.setText(status);
         }
+    }
+
+
+    @Override
+    public void newPhoto(String path) {
+        if (mClarifai == null) {
+            setUpClarifai();
+        }
+        Log.d(TAG, "newPhoto() called with: path = [" + path + "]");
+        mClarifai.getDefaultModels()
+                .generalModel()
+                .predict()
+                .withInputs(ClarifaiInput.forImage(ClarifaiFileImage.of(new File(path))))
+                .executeAsync(new ClarifaiRequest.OnSuccess<List<ClarifaiOutput<Concept>>>() {
+                    @Override
+                    public void onClarifaiResponseSuccess(List<ClarifaiOutput<Concept>> clarifaiOutputs) {
+                        for (ClarifaiOutput<Concept> clarifaiOutput : clarifaiOutputs) {
+                            Log.d(TAG, "onClarifaiResponseSuccess: clarifaiOutputs");
+                            for (Concept concept : clarifaiOutput.data()) {
+                                Log.d(TAG, "onClarifaiResponseSuccess: " + concept.name() + " " + concept.value());
+                            }
+                        }
+                    }
+                });
     }
 }

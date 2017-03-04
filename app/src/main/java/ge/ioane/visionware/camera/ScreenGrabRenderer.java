@@ -41,12 +41,6 @@ public class ScreenGrabRenderer implements GLSurfaceView.Renderer {
         mTangoCameraScreengrabCallback = aTangoCameraScreengrabCallback;
     }
 
-    /**
-     * Cue the renderer to grab the next screen.  This is a signal that will
-     * be detected inside the onDrawFrame() method
-     *
-     * @param b
-     */
     public void grabNextScreen(int x, int y, int w, int h) {
         grabNextScreen = true;
         grabX = x;
@@ -70,12 +64,7 @@ public class ScreenGrabRenderer implements GLSurfaceView.Renderer {
     public void onDrawFrame(final GL10 gl) {
         tangoCameraRenderer.onDrawFrame(gl);
         if (grabNextScreen) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    screenGrab(gl);
-                }
-            }).start();
+            screenGrab(gl);
             grabNextScreen = false;
         }
     }
@@ -122,40 +111,46 @@ public class ScreenGrabRenderer implements GLSurfaceView.Renderer {
      * Writes a copy of the GLSurface backbuffer to storage
      */
     private void screenGrab(GL10 gl) {
-        long fileprefix = System.currentTimeMillis();
-        String targetPath = Environment.getExternalStorageDirectory() + "/RavenEye/Photos/";
-        String imageFileName = fileprefix + ".png";
-        String fullPath = "error";
+        final Bitmap image = createBitmapFromGLSurface(grabX, grabY, grabWidth, grabHeight, gl);
 
-        Bitmap image = createBitmapFromGLSurface(grabX, grabY, grabWidth, grabHeight, gl);
-        if (!(new File(targetPath)).exists()) {
-            new File(targetPath).mkdirs();
-        }
-        try {
-            File targetDirectory = new File(targetPath);
-            File photo = new File(targetDirectory, imageFileName);
-            FileOutputStream fos = new FileOutputStream(photo.getPath());
-            image.compress(Bitmap.CompressFormat.PNG, 100, fos);
-            fos.flush();
-            fos.close();
-            fullPath = targetPath + imageFileName;
-            Log.i(TAG, "Grabbed an image in target path:" + fullPath);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                long fileprefix = System.currentTimeMillis();
+                String targetPath = Environment.getExternalStorageDirectory() + "/RavenEye/Photos/";
+                String imageFileName = fileprefix + ".png";
+                String fullPath = "error";
 
-            ///Notify the outer class(es)
-            if (mTangoCameraScreengrabCallback != null) {
-                mTangoCameraScreengrabCallback.newPhoto(fullPath);
-            } else {
-                Log.i(TAG, "Callback not set properly..");
+                if (!(new File(targetPath)).exists()) {
+                    new File(targetPath).mkdirs();
+                }
+                try {
+                    File targetDirectory = new File(targetPath);
+                    File photo = new File(targetDirectory, imageFileName);
+                    FileOutputStream fos = new FileOutputStream(photo.getPath());
+                    image.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                    fos.flush();
+                    fos.close();
+                    fullPath = targetPath + imageFileName;
+//            Log.i(TAG, "Grabbed an image in target path:" + fullPath);
+
+                    ///Notify the outer class(es)
+                    if (mTangoCameraScreengrabCallback != null) {
+                        mTangoCameraScreengrabCallback.newPhoto(fullPath);
+                    } else {
+                        Log.i(TAG, "Callback not set properly..");
+                    }
+
+                } catch (FileNotFoundException e) {
+                    Log.e(TAG, "Exception " + e);
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    Log.e(TAG, "Exception " + e);
+                    e.printStackTrace();
+                }
+                lastFileName = fullPath;
             }
-
-        } catch (FileNotFoundException e) {
-            Log.e(TAG, "Exception " + e);
-            e.printStackTrace();
-        } catch (IOException e) {
-            Log.e(TAG, "Exception " + e);
-            e.printStackTrace();
-        }
-        lastFileName = fullPath;
+        }).start();
     }
 
 

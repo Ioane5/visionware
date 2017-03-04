@@ -1,17 +1,18 @@
 package ge.ioane.visionware.camera;
 
-import android.app.Activity;
 import android.opengl.GLSurfaceView;
 import android.util.Log;
 
 import com.google.atap.tangoservice.TangoCameraPreview;
+
+import ge.ioane.visionware.MainActivity;
 
 /**
  * Created by ioane5 on 3/4/17.
  */
 public class ReadableTangoCameraPreview extends TangoCameraPreview implements TangoCameraScreengrabCallback {
 
-    Activity mainActivity;
+    MainActivity mainActivity;
     private static final String TAG = ReadableTangoCameraPreview.class.getSimpleName();
 
     //An intercept renderer
@@ -51,15 +52,15 @@ public class ReadableTangoCameraPreview extends TangoCameraPreview implements Ta
         }
     }
 
-    public ReadableTangoCameraPreview(Activity context) {
+    public ReadableTangoCameraPreview(MainActivity context) {
         super(context);
         mainActivity = context;
 
     }
 
     public void newPhoto(String aNewPhotoPath) {
-        //This gets called when a new photo was  grabbed created in the renderer
-        Log.i(TAG, "New image available at" + aNewPhotoPath);
+        mainActivity.newPhoto(aNewPhotoPath);
+
     }
 
 }
