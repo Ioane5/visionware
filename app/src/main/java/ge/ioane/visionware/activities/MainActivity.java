@@ -19,11 +19,9 @@ import com.google.atap.tangoservice.TangoPoseData;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.List;
 
 import clarifai2.api.ClarifaiBuilder;
 import clarifai2.api.ClarifaiClient;
-import clarifai2.api.request.ClarifaiRequest;
 import clarifai2.dto.input.ClarifaiInput;
 import clarifai2.dto.input.image.ClarifaiFileImage;
 import clarifai2.dto.model.output.ClarifaiOutput;
@@ -93,36 +91,31 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     protected void onResume() {
         super.onResume();
 
-        mTango = new Tango(this, new Runnable() {
-            @Override
-            public void run() {
-                synchronized (MainActivity.this) {
-                    mTangoCameraPreview.connectToTangoCamera(mTango, TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
+        mTango = new Tango(this, () -> {
+            synchronized (MainActivity.this) {
+                mTangoCameraPreview.connectToTangoCamera(mTango, TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
 
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            onLocalizationStateChanged(false);
-                        }
-                    });
-                    try {
-                        mConfig = setTangoConfig(mTango, false, true);
-                        mTango.connect(mConfig);
-                        startupTango();
-                    } catch (TangoOutOfDateException e) {
-                        Log.e(TAG, "Tango Out of Date", e);
-                    } catch (TangoErrorException e) {
-                        Log.e(TAG, "Tango Error", e);
-                    } catch (TangoInvalidException e) {
-                        Log.e(TAG, "Tango Invalid ", e);
-                    } catch (SecurityException e) {
-                        // Area Learning permissions are required. If they are not available,
-                        // SecurityException is thrown.
-                        Log.e(TAG, "No Permissions", e);
-                    }
+                runOnUiThread(() -> {
+                    onLocalizationStateChanged(false);
+                });
+                try {
+                    mConfig = setTangoConfig(mTango, false, true);
+                    mTango.connect(mConfig);
+                    startupTango();
+                } catch (TangoOutOfDateException e) {
+                    Log.e(TAG, "Tango Out of Date", e);
+                } catch (TangoErrorException e) {
+                    Log.e(TAG, "Tango Error", e);
+                } catch (TangoInvalidException e) {
+                    Log.e(TAG, "Tango Invalid ", e);
+                } catch (SecurityException e) {
+                    // Area Learning permissions are required. If they are not available,
+                    // SecurityException is thrown.
+                    Log.e(TAG, "No Permissions", e);
                 }
             }
-        });
+        }
+        );
     }
 
     @Override
@@ -167,7 +160,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     private void startupTango() {
         // Set Tango Listeners for Poses Device wrt Start of Service, Device wrt
         // ADF and Start of Service wrt ADF.
-        ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<TangoCoordinateFramePair>();
+        ArrayList<TangoCoordinateFramePair> framePairs = new ArrayList<>();
         framePairs.add(new TangoCoordinateFramePair(
                 TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE,
                 TangoPoseData.COORDINATE_FRAME_DEVICE));
@@ -190,7 +183,6 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                     long currentTime = System.currentTimeMillis();
                     if (currentTime - mPreviousImageCapture > IMAGE_CAPTURE_INTERVAL) {
                         mPreviousImageCapture = currentTime;
-                        // TODO
                         mTangoCameraPreview.takeSnapShot();
                     }
                 }
@@ -218,12 +210,9 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                             && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
                         if (pose.statusCode == TangoPoseData.POSE_VALID) {
 
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
+                            runOnUiThread(() -> {
 //                                    updateStatus(Arrays.toString(pose.translation));
-                                    updateStatus(RelativeCaltulator.lookAt(pose.rotation, pose.translation, new double[]{-1, 3}));
-                                }
+                                updateStatus(RelativeCaltulator.lookAt(pose.rotation, pose.translation, new double[]{-1, 3}));
                             });
                         }
                     }
@@ -237,14 +226,11 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                 if (mTimeToNextUpdate < 0.0) {
                     mTimeToNextUpdate = UPDATE_INTERVAL_MS;
 
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            synchronized (mSharedLock) {
-                                if (mPreviousLocalizationState != mIsRelocalized) {
-                                    mPreviousLocalizationState = mIsRelocalized;
-                                    onLocalizationStateChanged(mIsRelocalized);
-                                }
+                    runOnUiThread(() -> {
+                        synchronized (mSharedLock) {
+                            if (mPreviousLocalizationState != mIsRelocalized) {
+                                mPreviousLocalizationState = mIsRelocalized;
+                                onLocalizationStateChanged(mIsRelocalized);
                             }
                         }
                     });
@@ -286,14 +272,11 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                 .generalModel()
                 .predict()
                 .withInputs(ClarifaiInput.forImage(ClarifaiFileImage.of(new File(path))))
-                .executeAsync(new ClarifaiRequest.OnSuccess<List<ClarifaiOutput<Concept>>>() {
-                    @Override
-                    public void onClarifaiResponseSuccess(List<ClarifaiOutput<Concept>> clarifaiOutputs) {
-                        for (ClarifaiOutput<Concept> clarifaiOutput : clarifaiOutputs) {
-                            Log.d(TAG, "onClarifaiResponseSuccess: clarifaiOutputs");
-                            for (Concept concept : clarifaiOutput.data()) {
-                                Log.d(TAG, "onClarifaiResponseSuccess: " + concept.name() + " " + concept.value());
-                            }
+                .executeAsync(clarifaiOutputs -> {
+                    for (ClarifaiOutput<Concept> clarifaiOutput : clarifaiOutputs) {
+                        Log.d(TAG, "onClarifaiResponseSuccess: clarifaiOutputs");
+                        for (Concept concept : clarifaiOutput.data()) {
+                            Log.d(TAG, "onClarifaiResponseSuccess: " + concept.name() + " " + concept.value());
                         }
                     }
                 });
