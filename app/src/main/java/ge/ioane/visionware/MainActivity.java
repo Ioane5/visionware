@@ -16,7 +16,6 @@ import com.google.atap.tangoservice.TangoOutOfDateException;
 import com.google.atap.tangoservice.TangoPoseData;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -166,15 +165,12 @@ public class MainActivity extends AppCompatActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    Log.d(TAG, "onPoseAvailable: Translation " + Arrays.toString(pose.translation));
-                                    Log.d(TAG, "onPoseAvailable: Rotation " + Arrays.toString(pose.rotation));
-                                    
-                                    updateStatus(Arrays.toString(pose.translation));
+//                                    updateStatus(Arrays.toString(pose.translation));
+                                    updateStatus(RelativeCaltulator.lookAt(pose.rotation, pose.translation, new double[]{-1, 3}));
                                 }
                             });
                         }
                     }
-
                 }
 
                 final double deltaTime = (pose.timestamp - mPreviousPoseTimeStamp) *
@@ -212,7 +208,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    private int mCount = 0;
+
     private void updateStatus(String status) {
-        mStatusTextView.setText(status);
+        mCount++;
+        if (mCount > 4) {
+            mCount = 0;
+            mStatusTextView.setText(status);
+        }
     }
 }
