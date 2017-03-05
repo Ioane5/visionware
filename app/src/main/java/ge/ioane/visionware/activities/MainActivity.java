@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.util.Pair;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -22,6 +23,7 @@ import com.google.atap.tangoservice.TangoPoseData;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 import clarifai2.api.ClarifaiBuilder;
@@ -52,7 +54,6 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     private TextToSpeech mTextToSpeech;
     private TangoPoseData mSnapshotPose = null;
     private TangoPoseData mCurrentPose;
-    private ClarifaiClient mClarifai;
     private Tango mTango;
     private TangoConfig mConfig;
     private boolean mIsRelocalized;
@@ -63,6 +64,8 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     private double mPreviousPoseTimeStamp;
     private double mTimeToNextUpdate = UPDATE_INTERVAL_MS;
 
+    private ClarifaiClient mClarifai;
+    private VoiceCommandDetector mVoiceCommandDetector;
     private TextView mLocalizationTextView;
     private TextView mStatusTextView;
     private final Object mSharedLock = new Object();
@@ -87,6 +90,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
         mStatusTextView = (TextView) findViewById(R.id.tv_status);
         mLocalizationTextView = (TextView) findViewById(R.id.tv_localization);
 
+        mVoiceCommandDetector = new VoiceCommandDetector(this, this);
         mTextToSpeech = new TextToSpeech(this, status -> Log.d(TAG, "onInit() called with: status = [" + status + "]"));
     }
 
@@ -255,6 +259,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     protected void onDestroy() {
         super.onDestroy();
         mTextToSpeech.shutdown();
+        mVoiceCommandDetector.onDestroy();
     }
 
     private void onLocalizationStateChanged(boolean isLocalized) {
@@ -311,6 +316,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
 
     @Override
     public void findItemWithNameCommand(String itemName) {
+        Log.d(TAG, "findItemWithNameCommand() called with: itemName = [" + itemName + "]");
         if (!mIsRelocalized) {
             speak("Sorry, still trying to localize");
             return;
@@ -391,13 +397,48 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
         }
     }
 
+    @Override
+    public void itemsNearbyCommand() {
+        new Thread(() -> {
+            List<Item> allItems = App.getsInstance().getDaoSession().getItemDao().loadAll();
+
+            HashMap<String, Integer> itemCountMap = new HashMap<>();
+            for (Item allItem : allItems) {
+                if (!itemCountMap.containsKey(allItem.getName())) {
+                    itemCountMap.put(allItem.getName(), 1);
+                } else {
+                    itemCountMap.put(allItem.getName(), itemCountMap.get(allItem.getName()) + 1);
+                }
+            }
+            runOnUiThread(() -> {
+                onNearbyItemsFound(itemCountMap);
+            });
+        }).start();
+    }
+
+    private void onNearbyItemsFound(HashMap<String, Integer> itemCountMap) {
+        ArrayList<Pair<String, Integer>> items = new ArrayList<>();
+        for (String s : itemCountMap.keySet()) {
+            items.add(new Pair<>(s, itemCountMap.get(s)));
+        }
+        Collections.sort(items, (x1, x2) -> Integer.compare(x2.second, x1.second));
+
+        String text = "There are ";
+        for (int i = 0; i < Math.min(5, items.size()); i++) {
+            Pair<String, Integer> item = items.get(i);
+            text += String.format("%d %s%s", item.second, item.first, item.second > 1 ? "s" : "");
+        }
+        if (items.size() - 5 > 0) {
+            text += String.format(" and %d more kind of items", items.size() - 5);
+        }
+        speak(text);
+    }
 
     private void speak(String text) {
         mTextToSpeech.speak(text, TextToSpeech.QUEUE_ADD, null);
     }
 
     public void onActivateListener(View view) {
-        Log.d(TAG, "onActivateListener() called with: view = [" + view + "]");
-        findItemWithNameCommand("laptop");
+        mVoiceCommandDetector.activateCommandRecognition();
     }
 }
