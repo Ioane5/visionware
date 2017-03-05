@@ -10,8 +10,6 @@ import android.support.annotation.NonNull;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Created by ioane5 on 3/4/17.
@@ -114,20 +112,15 @@ public class VoiceCommandDetector {
             command = command.replace(" an ", " ");
             command = command.replace(" me ", " ");
             command = command.replace(" the ", " ");
-            command = command.replace("please ", " ");
+            command = command.replace("please", "");
 
             if (command.contains("nearby items")) {
                 mCallback.itemsNearbyCommand();
                 return;
             }
-            Pattern findItemPattern = Pattern.compile("^ *(\\w*) *(\\w*) *");
-            Matcher m = findItemPattern.matcher(command);
-
-            if (m.find()) {
-                mCallback.findItemWithNameCommand(m.group(2));
-            } else {
-                Log.w(TAG, "unknown command >>> " + sb.toString() + "    parsed " + command);
-            }
+            command = command.replace("find", "");
+            command = command.trim();
+            mCallback.findItemWithNameCommand(command);
         }
 
         @Override
