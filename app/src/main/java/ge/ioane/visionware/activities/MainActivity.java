@@ -325,11 +325,12 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                     .list();
 
             List<Item> selectedItems = new ArrayList<>();
+            Log.d(TAG, "findItemWithNameCommand: " + selectedItems);
             for (Item item : items) {
                 boolean isNear = false;
                 for (Item selectedItem : selectedItems) {
-                    double dist = RelativeCaltulator.distance(selectedItem.getPosition(), selectedItem.getPosition());
-                    if (dist < 0.5) {
+                    double dist = RelativeCaltulator.distance(item.getPosition(), selectedItem.getPosition());
+                    if (dist < 0.2) {
                         isNear = true;
                         break;
                     }
