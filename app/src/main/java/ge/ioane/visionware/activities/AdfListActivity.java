@@ -12,6 +12,7 @@ import ge.ioane.visionware.R;
 
 public class AdfListActivity extends AppCompatActivity {
 
+    @SuppressWarnings("unused")
     private static final String TAG = AdfListActivity.class.getSimpleName();
 
     // Permission request action.

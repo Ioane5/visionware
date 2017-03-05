@@ -7,7 +7,9 @@ import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.util.Pair;
+import android.view.Menu;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -49,7 +51,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     private static final String KEY_ADF_UUID = "ADF_UUID";
 
     private static final double UPDATE_INTERVAL_MS = 100.0;
-    public static final int IMAGE_CAPTURE_INTERVAL = 5000;
+    public static final int IMAGE_CAPTURE_INTERVAL = 6000;
 
     private TextToSpeech mTextToSpeech;
     private TangoPoseData mSnapshotPose = null;
@@ -69,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     private TextView mLocalizationTextView;
     private TextView mStatusTextView;
     private final Object mSharedLock = new Object();
+    private boolean mLearnClarifai;
 
     public static void start(Context context, String adfUUID) {
         Log.d(TAG, "start() called with: context = [" + context + "], adfUUID = [" + adfUUID + "]");
@@ -82,6 +85,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        App.getsInstance().initializeDaoSession(getIntent().getStringExtra(KEY_ADF_UUID));
 
         FrameLayout container = (FrameLayout) findViewById(R.id.container);
         mTangoCameraPreview = new ReadableTangoCameraPreview(this);
@@ -92,6 +96,16 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
 
         mVoiceCommandDetector = new VoiceCommandDetector(this, this);
         mTextToSpeech = new TextToSpeech(this, status -> Log.d(TAG, "onInit() called with: status = [" + status + "]"));
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+
+        CheckBox checkBox = (CheckBox) menu.findItem(R.id.menu_learn).getActionView();
+        checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> mLearnClarifai = isChecked);
+        checkBox.setChecked(true);
+        return true;
     }
 
     private void setUpClarifai() {
@@ -289,6 +303,9 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
         if (mClarifai == null) {
             setUpClarifai();
         }
+        if (!mLearnClarifai) {
+            return;
+        }
         TangoPoseData pose = mSnapshotPose;
         mSnapshotPose = null;
 
@@ -439,6 +456,10 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
     }
 
     public void onActivateListener(View view) {
+        if (!mIsRelocalized) {
+            speak("Sorry, still localizing");
+            return;
+        }
         mVoiceCommandDetector.activateCommandRecognition();
     }
 }

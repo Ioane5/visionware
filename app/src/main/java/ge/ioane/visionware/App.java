@@ -25,16 +25,20 @@ public class App extends Application {
         sInstance = this;
     }
 
-    private void initializeGreenDao() {
-        DaoMaster.DevOpenHelper helper = new DaoMaster.DevOpenHelper(this, "items-db");
+    private void initializeGreenDao(String dbName) {
+        DaoMaster.DevOpenHelper helper = new DaoMaster.DevOpenHelper(this, dbName);
         Database db = helper.getWritableDb();
         mDaoSession = new DaoMaster(db).newSession();
     }
 
     public DaoSession getDaoSession() {
         if (mDaoSession == null) {
-            initializeGreenDao();
+            throw new IllegalStateException("Greendao wasn't initialized");
         }
         return mDaoSession;
+    }
+
+    public void initializeDaoSession(String uuid) {
+        initializeGreenDao(uuid + "-db");
     }
 }
