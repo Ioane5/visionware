@@ -16,7 +16,6 @@ import java.util.regex.Pattern;
 /**
  * Created by ioane5 on 3/4/17.
  */
-
 public class VoiceCommandDetector {
 
     private static final String TAG = VoiceCommandDetector.class.getSimpleName();
