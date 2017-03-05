@@ -25,7 +25,7 @@
         android:layout_margin="16dp"
         android:background="@color/colorPrimary"
         android:padding="16dp"
-        android:text="Hello World!"
+        android:text="Localization Status"
         android:textColor="@android:color/white" />
 
     <TextView
@@ -38,17 +38,16 @@
         android:background="@color/colorPrimary"
         android:gravity="center"
         android:padding="16dp"
-        android:text="EMPTY"
+        android:text="Test Data"
         android:textColor="@android:color/white" />
 
     <ImageButton
-        android:onClick="onActivateListener"
         android:id="@+id/button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentRight="true"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:layout_margin="16dp"
         android:background="?attr/selectableItemBackgroundBorderless"
+        android:onClick="onActivateListener"
         android:padding="16dp"
         android:src="@android:drawable/ic_btn_speak_now"
         android:text="Speak" />
