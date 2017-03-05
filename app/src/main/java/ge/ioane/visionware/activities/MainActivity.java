@@ -21,6 +21,7 @@ import com.google.atap.tangoservice.TangoPoseData;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import clarifai2.api.ClarifaiBuilder;
@@ -86,12 +87,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
         mStatusTextView = (TextView) findViewById(R.id.tv_status);
         mLocalizationTextView = (TextView) findViewById(R.id.tv_localization);
 
-        mTextToSpeech = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
-            @Override
-            public void onInit(int status) {
-                Log.d(TAG, "onInit() called with: status = [" + status + "]");
-            }
-        });
+        mTextToSpeech = new TextToSpeech(this, status -> Log.d(TAG, "onInit() called with: status = [" + status + "]"));
     }
 
     private void setUpClarifai() {
@@ -255,6 +251,12 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
         });
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mTextToSpeech.shutdown();
+    }
+
     private void onLocalizationStateChanged(boolean isLocalized) {
         if (isLocalized) {
             mLocalizationTextView.setText("Localized");
@@ -293,10 +295,8 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                 .withInputs(ClarifaiInput.forImage(ClarifaiFileImage.of(new File(path))))
                 .executeAsync(clarifaiOutputs -> {
                     for (ClarifaiOutput<Concept> clarifaiOutput : clarifaiOutputs) {
-                        Log.d(TAG, "onClarifaiResponseSuccess: clarifaiOutputs");
                         for (Concept concept : clarifaiOutput.data()) {
-                            Log.d(TAG, "onClarifaiResponseSuccess: " + concept.name() + " " + concept.value());
-                            if (concept.value() > 0.93f) {
+                            if (concept.value() > 0.94f) {
                                 createItem(concept.name(), position);
                             }
                         }
@@ -324,7 +324,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                     .build()
                     .list();
 
-            List<Item> selectedItems = new ArrayList<>();
+            ArrayList<Item> selectedItems = new ArrayList<>();
             Log.d(TAG, "findItemWithNameCommand: " + selectedItems);
             for (Item item : items) {
                 boolean isNear = false;
@@ -339,6 +339,12 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                     selectedItems.add(item);
                 }
             }
+
+            Collections.sort(selectedItems, (o1, o2) -> {
+                double d1 = RelativeCaltulator.distance(mCurrentPose.translation, o1.getPosition());
+                double d2 = RelativeCaltulator.distance(mCurrentPose.translation, o2.getPosition());
+                return Double.compare(d1, d2);
+            });
             runOnUiThread(() -> onItemsFound(selectedItems, itemName));
         }).start();
     }
@@ -354,36 +360,40 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
             speak("We couldn't find any " + name);
         } else {
             speak(String.format("I found %d %s%s", items.size(), name, items.size() > 1 ? "s" : ""));
-            if (items.size() == 1) {
-                Item item = items.get(0);
-                double distance = RelativeCaltulator.distance(mCurrentPose.translation, item.getPosition());
-                distance = Math.round(distance - 0.1) + 0.1;
 
-                String direction = "";
-                double angle = RelativeCaltulator.getLookAngle(mCurrentPose.rotation, mCurrentPose.translation, item.getPosition());
-                double absAngle = Math.abs(angle);
-                if (absAngle > 145) {
-                    direction = "at the back";
-                } else if (absAngle < 30) {
-                    direction = "in front";
-                } else {
-                    if (absAngle < 60) {
-                        direction = "little ";
-                    }
-                    if (angle > 0) {
-                        direction += "right";
-                    } else {
-                        direction += "left";
-                    }
-                }
-                speak(String.format("The %s is %.1f meter%s away %s of you", name, distance, distance > 1.5 ? "s" : "", direction));
+            String text = "The ";
+            if (items.size() > 1) {
+                text += "nearest ";
             }
+            Item item = items.get(0);
+            double distance = RelativeCaltulator.distance(mCurrentPose.translation, item.getPosition());
+            distance = Math.round(distance - 0.1) + 0.1;
+
+            String direction = "";
+            double angle = RelativeCaltulator.getLookAngle(mCurrentPose.rotation, mCurrentPose.translation, item.getPosition());
+            double absAngle = Math.abs(angle);
+            if (absAngle > 145) {
+                direction = "at the back";
+            } else if (absAngle < 30) {
+                direction = "in front";
+            } else {
+                if (absAngle < 60) {
+                    direction = "little ";
+                }
+                if (angle > 0) {
+                    direction += "right";
+                } else {
+                    direction += "left";
+                }
+            }
+            text += String.format("%s is %.1f meter%s away %s of you", name, distance, distance > 1.5 ? "s" : "", direction);
+            speak(text);
         }
     }
 
 
     private void speak(String text) {
-        mTextToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+        mTextToSpeech.speak(text, TextToSpeech.QUEUE_ADD, null);
     }
 
     public void onActivateListener(View view) {
