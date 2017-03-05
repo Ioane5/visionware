@@ -68,4 +68,14 @@ public class Item {
     public double[] getPosition() {
         return new double[]{Xposition, Yposition, Zposition};
     }
+
+    @Override
+    public String toString() {
+        return "Item{" +
+                "name='" + name + '\'' +
+                ", X=" + Xposition +
+                ", Y=" + Yposition +
+                ", Z=" + Zposition +
+                '}';
+    }
 }

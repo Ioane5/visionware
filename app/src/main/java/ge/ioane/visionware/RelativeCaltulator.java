@@ -1,7 +1,5 @@
 package ge.ioane.visionware;
 
-import com.google.atap.tangoservice.TangoPoseData;
-
 import org.rajawali3d.math.Quaternion;
 import org.rajawali3d.math.vector.Vector2;
 import org.rajawali3d.math.vector.Vector3;
@@ -26,7 +24,7 @@ public abstract class RelativeCaltulator {
 //        return "" + rotationAngle;
 //    }
 
-    public static String lookAt(double[] rotation, double[] first, double[] second) {
+    public static String lookAtInfo(double[] rotation, double[] first, double[] second) {
         Vector2 point = new Vector2(second[0], second[1]);
         Vector2 cameraPos = new Vector2(first[0], first[1]);
 
@@ -35,7 +33,7 @@ public abstract class RelativeCaltulator {
         double cameraAngle = -q.getRoll() * GRADUS_IN_RAD;
 
         Vector2 desiredForward = new Vector2(point.getX() - cameraPos.getX(), point.getY() - cameraPos.getY());
-        double desiredHeading = Math.atan2(desiredForward.getY(), desiredForward.getX()) * GRADUS_IN_RAD;
+        double desiredHeading = Math.atan2(desiredForward.getX(), desiredForward.getY()) * GRADUS_IN_RAD;
 
         double rotation_needed = desiredHeading - cameraAngle;
 //        if (rotation_needed > Math.PI)
@@ -43,7 +41,22 @@ public abstract class RelativeCaltulator {
 //        if (rotation_needed < -Math.PI)
 //            rotation_needed += 2 * Math.PI;
 
-        return "x " + first[0] + " y " + first[1] + "\n Angle " + cameraAngle + "\nDesired Heading" + desiredHeading + "\nrotation " + rotation_needed;
+//        return desiredHeading - cameraAngle;
+        return "x " + first[0] + " y " + first[1] + "\n Angle " + cameraAngle + "\nDesired Heading" + desiredHeading + "\nRotation needed " + rotation_needed;
+    }
+
+    public static double getLookAngle(double[] rotation, double[] first, double[] second) {
+        Vector2 point = new Vector2(second[0], second[1]);
+        Vector2 cameraPos = new Vector2(first[0], first[1]);
+
+        Quaternion q = new Quaternion(rotation[3], rotation[0], rotation[1], rotation[2]);
+        // ROLL 3 : -3 PI, -PI
+        double cameraAngle = -q.getRoll() * GRADUS_IN_RAD;
+
+        Vector2 desiredForward = new Vector2(point.getX() - cameraPos.getX(), point.getY() - cameraPos.getY());
+        double desiredHeading = Math.atan2(desiredForward.getX(), desiredForward.getY()) * GRADUS_IN_RAD;
+
+        return desiredHeading - cameraAngle;
     }
 
     public static double distance(double[] first, double[] second) {

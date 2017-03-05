@@ -50,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
 
     private TextToSpeech mTextToSpeech;
     private TangoPoseData mSnapshotPose = null;
+    private TangoPoseData mCurrentPose;
     private ClarifaiClient mClarifai;
     private Tango mTango;
     private TangoConfig mConfig;
@@ -221,13 +222,13 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
                     } else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
                         if (pose.statusCode == TangoPoseData.POSE_VALID) {
-
+                            mCurrentPose = pose;
                             runOnUiThread(() -> {
 //                                    updateStatus(Arrays.toString(pose.translation));
                                 if (mSnapshotPose == null) {
                                     mSnapshotPose = pose;
                                 }
-                                updateStatus(RelativeCaltulator.lookAt(pose.rotation, pose.translation, new double[]{-1, 3}));
+                                updateStatus(RelativeCaltulator.lookAtInfo(pose.rotation, pose.translation, new double[]{-1, -3}));
                             });
                         }
                     }
@@ -310,6 +311,10 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
 
     @Override
     public void findItemWithNameCommand(String itemName) {
+        if (!mIsRelocalized) {
+            speak("Sorry, still trying to localize");
+            return;
+        }
         new Thread(() -> {
             List<Item> items = App.getsInstance()
                     .getDaoSession()
@@ -347,7 +352,31 @@ public class MainActivity extends AppCompatActivity implements TangoCameraScreen
         if (items.size() == 0) {
             speak("We couldn't find any " + name);
         } else {
-            speak(String.format("I found %d %s%s", items.size(), name, items.size() > 0 ? "s" : ""));
+            speak(String.format("I found %d %s%s", items.size(), name, items.size() > 1 ? "s" : ""));
+            if (items.size() == 1) {
+                Item item = items.get(0);
+                double distance = RelativeCaltulator.distance(mCurrentPose.translation, item.getPosition());
+                distance = Math.round(distance - 0.1) + 0.1;
+
+                String direction = "";
+                double angle = RelativeCaltulator.getLookAngle(mCurrentPose.rotation, mCurrentPose.translation, item.getPosition());
+                double absAngle = Math.abs(angle);
+                if (absAngle > 145) {
+                    direction = "at the back";
+                } else if (absAngle < 30) {
+                    direction = "in front";
+                } else {
+                    if (absAngle < 60) {
+                        direction = "little ";
+                    }
+                    if (angle > 0) {
+                        direction += "right";
+                    } else {
+                        direction += "left";
+                    }
+                }
+                speak(String.format("The %s is %.1f meter%s away %s of you", name, distance, distance > 1.5 ? "s" : "", direction));
+            }
         }
     }
 
