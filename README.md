@@ -1,7 +1,7 @@
 ## VisionWare
 Hackathon HackUPC project
 
-This is unique application that intends to help people with vision impedance to find items in the room. 
+This is unique application that intends to help people with vision impairment to find items in the room. 
 
 ### Idea
 Idea is that user should be able to find exact location of the requested item from Voice assistant. 
